@@ -6,20 +6,20 @@
 #include <iostream>
 
 const fvec_t g_weights = {
-    1.0f, 1.0f, 1.0f, -1.0f, 0.1f, 0.1f, 1.0f, 
-    0.9f, 1.0f, 1.0f, -1.0f, 0.1f, 0.2f, 1.0f, 
-    0.6f, 1.0f, 1.0f, -1.0f, 0.1f, 0.5f, 0.0f, 
-    0.5f, 1.0f, 1.0f, -1.0f, 0.1f, 0.6f, 0.0f, 
-    0.2f, 1.0f, 1.0f, -1.0f, 0.1f, 0.9f, -1.0f, 
-    0.1f, 1.0f, 1.0f, -1.0f, 0.1f, 1.0f, -1.0f, 
+    1.0f, 1.0f, 1.0f, -1.0f, 0.1f, 0.1f, 1.0f,
+    0.9f, 1.0f, 1.0f, -1.0f, 0.1f, 0.2f, 1.0f,
+    0.6f, 1.0f, 1.0f, -1.0f, 0.1f, 0.5f, 0.0f,
+    0.5f, 1.0f, 1.0f, -1.0f, 0.1f, 0.6f, 0.0f,
+    0.2f, 1.0f, 1.0f, -1.0f, 0.1f, 0.9f, -1.0f,
+    0.1f, 1.0f, 1.0f, -1.0f, 0.1f, 1.0f, -1.0f,
 
-    0.1f, 1.0f, 1.0f, -1.0f, 0.1f, 1.0f, 0.0f, 
-    0.2f, 1.0f, 1.0f, -1.0f, 0.1f, 0.9f, 0.0f, 
-    0.5f, 1.0f, 1.0f, -1.0f, 0.1f, 0.6f, -1.0f, 
-    0.6f, 1.0f, 1.0f, -1.0f, 0.1f, 0.5f, -1.0f, 
-    0.9f, 1.0f, 1.0f, -1.0f, 0.1f, 0.2f, -2.0f, 
-    1.0f, 1.0f, 1.0f, -1.0f, 0.1f, 0.1f, -2.0f, 
-    0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f, -0.5f, 
+    0.1f, 1.0f, 1.0f, -1.0f, 0.1f, 1.0f, 0.0f,
+    0.2f, 1.0f, 1.0f, -1.0f, 0.1f, 0.9f, 0.0f,
+    0.5f, 1.0f, 1.0f, -1.0f, 0.1f, 0.6f, -1.0f,
+    0.6f, 1.0f, 1.0f, -1.0f, 0.1f, 0.5f, -1.0f,
+    0.9f, 1.0f, 1.0f, -1.0f, 0.1f, 0.2f, -2.0f,
+    1.0f, 1.0f, 1.0f, -1.0f, 0.1f, 0.1f, -2.0f,
+    0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f, -0.5f,
 };
 
 const std::size_t g_firstMatrixSize = 42;
@@ -61,7 +61,7 @@ void case1()
     ASSERT_EQ(result.size(), g_first_relu.size(), "");
     bool passing = true;
     for (std::size_t i = 0; i < result.size(); ++i) {
-        passing |= EXPECT_FUZZ_EQ(result[i], g_first_relu[i], std::format("[{}]", i), 1e-7f);
+        passing &= EXPECT_FUZZ_EQ(result[i], g_first_relu[i], std::format("[{}]", i), 1e-7f);
     }
     ASSERT_EQ(passing, true, "");
 }
@@ -79,7 +79,32 @@ void case2()
     ASSERT_EQ(result.size(), g_second_relu.size(), "");
     bool passing = true;
     for (std::size_t i = 0; i < result.size(); ++i) {
-        passing |= EXPECT_FUZZ_EQ(result[i], g_second_relu[i], std::format("[{}]", i), 1e-6f);
+        passing &= EXPECT_FUZZ_EQ(result[i], g_second_relu[i], std::format("[{}]", i), 1e-6f);
+    }
+    ASSERT_EQ(passing, true, "");
+}
+
+void case3()
+{
+    EmptyModel emptyModel;
+    ModelBuilder modelBuilder(emptyModel, 6);
+    modelBuilder.addLayer(6);
+    modelBuilder.addLayer(7);
+    ASSERT_EQ(modelBuilder.size(), g_weights.size(), "");
+    Model & model = modelBuilder.finalize(g_weights);
+    fvec_t activations = model.calculateActivations(g_input);
+    ASSERT_EQ(activations.size(), g_first_relu.size() + g_second_relu.size(), "");
+    bool passing = true;
+    {
+        std::size_t i = 0;
+        for (; i < g_first_relu.size(); ++i) {
+            passing &= EXPECT_FUZZ_EQ(activations[i], g_first_relu[i], std::format("[{}]", i), 1e-6f);
+        }
+        std::size_t both_relu_size = g_first_relu.size() + g_second_relu.size();
+        for (; i < both_relu_size; ++i) {
+            std::size_t j = i - g_first_relu.size();
+            passing &= EXPECT_FUZZ_EQ(activations[i], g_second_relu[j], std::format("i=[{}],j=[{}]", i, j), 1e-6f);
+        }
     }
     ASSERT_EQ(passing, true, "");
 }
@@ -88,6 +113,7 @@ int main()
 {
     case1();
     case2();
+    case3();
     std::cout << "All tests passed!" << std::endl;
 }
 
