@@ -1,6 +1,6 @@
 #include "../src/model.h"
+#include "test_common.h"
 
-#include <type_traits>
 #include <cmath>
 #include <format>
 #include <iostream>
@@ -50,36 +50,10 @@ const fvec_t g_second_relu = {
     1.133f, 1.236f, 0.545f, 0.648f, -0.0f, 0.06f, 0.1f,
 };
 
-template <typename T>
-bool assert_eq(T a, T b, const char * aStr, const char * bStr,
-               const char * function, int line, const std::string & what,
-               bool stop = true, T epsilon = T{})
-{
-    if (a == b)
-        return true;
-    if constexpr (std::is_signed_v<T>) {
-        if (epsilon != T{} && std::abs(b - a) < epsilon)
-            return true;
-    }
-    std::cerr << 
-        std::format("{}:{} {}: Values not equal: {}\n"
-                "\t{:16}: {:16}\n"
-                "\t{:16}: {:16}\n",
-                function, line, __FILE__, what, 
-                aStr, a, bStr, b);
-    if (stop)
-        std::abort();
-    return false;
-}
-
-#define ASSERT_EQ(a, b, what) assert_eq(a, b, #a, #b, __FUNCTION__, __LINE__, what);
-#define EXPECT_EQ(a, b, what) assert_eq(a, b, #a, #b, __FUNCTION__, __LINE__, what, false);
-#define EXPECT_FUZZ_EQ(a, b, what, epsilon) assert_eq(a, b, #a, #b, __FUNCTION__, __LINE__, what, false, epsilon);
-
 void case1()
 {
-	EmptyModel emptyModel;
-	ModelBuilder modelBuilder(emptyModel, 6);
+    EmptyModel emptyModel;
+    ModelBuilder modelBuilder(emptyModel, 6);
     modelBuilder.addLayer(6);
     ASSERT_EQ(modelBuilder.size(), g_firstMatrixSize, "");
     Model & model = modelBuilder.finalize(fvec_t(g_weights.data(), g_weights.data() + g_firstMatrixSize));
@@ -95,8 +69,8 @@ void case1()
 
 void case2()
 {
-	EmptyModel emptyModel;
-	ModelBuilder modelBuilder(emptyModel, 6);
+    EmptyModel emptyModel;
+    ModelBuilder modelBuilder(emptyModel, 6);
     modelBuilder.addLayer(6);
     modelBuilder.addLayer(7);
     ASSERT_EQ(modelBuilder.size(), g_weights.size(), "");
