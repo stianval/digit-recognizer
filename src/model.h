@@ -22,14 +22,15 @@ private:  // functions
 
 private:
     float* data_;
-    std::size_t cols_;
-    std::size_t rows_;
+    const std::size_t cols_;
+    const std::size_t rows_;
 };
 
 class Model {
 public:
     fvec_t runInference(fvec_t input) const;
     fvec_t calculateActivations(cfspan_t input) const;
+    std::vector<fspan_t> activationSpans(fspan_t activations) const;
 private:
     Model() = default;
     std::vector<Matrix> layers_;

@@ -76,6 +76,18 @@ fvec_t Model::calculateActivations(cfspan_t input) const
     return activations;
 }
 
+std::vector<fspan_t> Model::activationSpans(fspan_t activations) const
+{
+    std::vector<fspan_t> result;
+    result.reserve(layers_.size());
+    float * start = activations.data();
+    for (const Matrix & layer : layers_) {
+        result.push_back(fspan_t(start, layer.rows_));
+        start += layer.rows_;
+    }
+    return result;
+}
+
 ModelBuilder::ModelBuilder(EmptyModel & model, std::size_t expectedInputSize)
     : model_(model)
     , currentLayerSize_(expectedInputSize)
