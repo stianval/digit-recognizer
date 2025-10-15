@@ -134,12 +134,68 @@ void caseActivationSpans()
     ASSERT_EQ(passing, true, "");
 }
 
+float calculateCost(const cfspan_t inferenceResult, const cfspan_t target)
+{
+    ASSERT_EQ(inferenceResult.size(), target.size(), "");
+    float result = 0.0f;
+    for (std::size_t i = 0; i < target.size(); ++i) {
+        float diff = inferenceResult[i] - target[i];
+        result += diff * diff;
+    }
+    return result;
+}
+
+void caseBackPropagationReducesCost()
+{
+    EmptyModel emptyModel;
+    ModelBuilder modelBuilder(emptyModel, 6);
+    modelBuilder.addLayer(6);
+    modelBuilder.addLayer(7);
+    ASSERT_EQ(modelBuilder.size(), g_weights.size(), "");
+    const Model & model = modelBuilder.finalize(g_weights);
+    fvec_t activations = model.calculateActivations(g_input);
+
+    fspan_t refInference = model.activationSpans(activations).back();
+
+    bool passing = true;
+
+    for (std::size_t i = 0; i <  g_second_relu.size(); ++i) {
+        // when
+        fvec_t dw(model.size());
+        fvec_t target(g_second_relu.size());
+        target[i] = 1.0f;
+        float refCost = calculateCost(refInference, target);
+        model.backPropagate(dw, activations, target, g_input);
+
+        bool allZeros = true;
+        for (float v : dw) {
+            if (v != 0.0f) {
+                allZeros = false;
+                break;
+            }
+        }
+        bool ok = EXPECT_EQ(allZeros, false, std::format("[{}]", i));
+        if (!ok)
+            continue;
+
+        // then
+        Model model2 = model;
+        model2.apply(dw);
+        fvec_t activations = model2.calculateActivations(g_input);
+        fspan_t inference = model2.activationSpans(activations).back();
+        float cost = calculateCost(inference, target);
+        passing &= EXPECT_EQ(cost < refCost, true, std::format("[{}], cost={}, refCost={}", i, cost, refCost));
+    }
+    ASSERT_EQ(passing, true, "");
+}
+
 int main()
 {
     case1();
     case2();
     case3();
     caseActivationSpans();
+    caseBackPropagationReducesCost();
     std::cout << "All tests passed!" << std::endl;
 }
 

@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++23 -Wall -Wextra -Werror
+override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror
 CC = $(CXX)
 src/train: src/train.o src/model.o src/weightstorage.o
 
