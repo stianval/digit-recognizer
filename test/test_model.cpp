@@ -189,6 +189,46 @@ void caseBackPropagationReducesCost()
     ASSERT_EQ(passing, true, "");
 }
 
+void caseWeightDeltasAccumulateCorrectly()
+{
+    EmptyModel emptyModel;
+    ModelBuilder modelBuilder(emptyModel, 6);
+    modelBuilder.addLayer(6);
+    modelBuilder.addLayer(7);
+    ASSERT_EQ(modelBuilder.size(), g_weights.size(), "");
+    const Model & model = modelBuilder.finalize(g_weights);
+    fvec_t activations = model.calculateActivations(g_input);
+
+    fvec_t dwAccumulated(model.size());
+
+    // when
+    fvec_t targetA(g_second_relu.size());
+    targetA[0] = 1.0f;
+    fvec_t dwA(model.size());
+    model.backPropagate(dwA, activations, targetA, g_input);
+    model.backPropagate(dwAccumulated, activations, targetA, g_input);
+
+    // then
+    bool passing = true;
+    for (std::size_t i = 0; i < dwA.size(); ++i) {
+        passing &= EXPECT_EQ(dwA[i], dwAccumulated[i], std::format("[{}]", i));
+    }
+    ASSERT_EQ(passing, true, "");
+
+    // when
+    fvec_t targetB(g_second_relu.size());
+    targetB[1] = 1.0f;
+    fvec_t dwB(model.size());
+    model.backPropagate(dwB, activations, targetB, g_input);
+    model.backPropagate(dwAccumulated, activations, targetB, g_input);
+
+    // then
+    for (std::size_t i = 0; i < dwA.size(); ++i) {
+        passing &= EXPECT_FUZZ_EQ(dwA[i] + dwB[i], dwAccumulated[i], std::format("[{}], dwA={} dwB={}", i, dwA[i], dwB[i]), 1e-6f);
+    }
+    ASSERT_EQ(passing, true, "");
+}
+
 int main()
 {
     case1();
@@ -196,6 +236,7 @@ int main()
     case3();
     caseActivationSpans();
     caseBackPropagationReducesCost();
+    caseWeightDeltasAccumulateCorrectly();
     std::cout << "All tests passed!" << std::endl;
 }
 
