@@ -6,12 +6,14 @@
 #include <cstdlib>
 #include <filesystem>
 
+namespace fs = std::filesystem;
+
 const int g_defaultMiniStep = 10;
 
 struct ProgArgs {
-    std::filesystem::path weightsIn;
-    std::filesystem::path weightsOut;
-    std::filesystem::path trainingDir;
+    fs::path weightsIn;
+    fs::path weightsOut;
+    fs::path trainingDir;
     int miniStep = 10;
 };
 
@@ -41,12 +43,12 @@ int main(int argc, const char * argv[])
     bool createRandomWeights = false;
     if (args.weightsIn == "-") {
         createRandomWeights = true;
-    } else if (!std::filesystem::exists(args.weightsIn)) {
+    } else if (!fs::exists(args.weightsIn)) {
         std::cerr << std::format("'{}' does not exist\n", std::string(args.weightsIn));
         return EXIT_FAILURE;
     }
 
-    if (std::filesystem::exists(args.weightsOut)) {
+    if (fs::exists(args.weightsOut)) {
         std::cerr << std::format("'{}' already exists\n", std::string(args.weightsOut));
         return EXIT_FAILURE;
     }
@@ -54,10 +56,10 @@ int main(int argc, const char * argv[])
     bool skipTraining = false;
     if (args.trainingDir.empty()) {
         skipTraining = true;
-    } else if (!std::filesystem::exists(args.trainingDir)) {
+    } else if (!fs::exists(args.trainingDir)) {
         std::cerr << std::format("'{}' does not exist\n", std::string(args.trainingDir));
         return EXIT_FAILURE;
-    } else if (!std::filesystem::is_directory(args.trainingDir)) {
+    } else if (!fs::is_directory(args.trainingDir)) {
         std::cerr << std::format("'{}' is not a directory\n", std::string(args.trainingDir));
         return EXIT_FAILURE;
     }

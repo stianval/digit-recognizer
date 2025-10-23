@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <exception>
 
+namespace fs = std::filesystem;
+
 class FileSizeError : public std::runtime_error
 {
     using runtime_error::runtime_error;
@@ -28,7 +30,7 @@ public:  // data
     const std::size_t cols;
 };
 
-const ImageBank loadImages(std::filesystem::path path);
-const std::vector<char> loadLabels(std::filesystem::path path);
+const ImageBank loadImages(fs::path path);
+const std::vector<char> loadLabels(fs::path path);
 
 #endif  // DATALOADER_H

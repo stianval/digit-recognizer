@@ -10,6 +10,8 @@
 #include <iostream>
 #include <exception>
 
+namespace fs = std::filesystem;
+
 static_assert(std::endian::native == std::endian::little, "Requires little endian");
 static_assert(std::numeric_limits<float>::is_iec559, "Requires standard float type");
 
@@ -22,7 +24,7 @@ void fillRandomWeights(fvec_t & weights)
     }
 }
 
-void saveWeights(const std::filesystem::path & path, const fvec_t & weights)
+void saveWeights(const fs::path & path, const fvec_t & weights)
 {
     std::vector<char> buf(weights.size() * sizeof(float));
     std::memcpy(buf.data(), weights.data(), buf.size());
@@ -30,11 +32,11 @@ void saveWeights(const std::filesystem::path & path, const fvec_t & weights)
     file.write(buf.data(), buf.size());
 }
 
-void loadWeights(const std::filesystem::path & path, fvec_t & weights)
+void loadWeights(const fs::path & path, fvec_t & weights)
 {
     std::vector<char> buf(weights.size() * sizeof(float));
-    if (std::filesystem::file_size(path) != buf.size()) {
-	std::cerr << "File size is wrong" << std::endl;
+    if (fs::file_size(path) != buf.size()) {
+	std::cerr << "File size is wrong" << path << std::endl;
 	throw std::runtime_error("File size is wrong");
     }
     std::ifstream file(path, std::ios_base::in | std::ios_base::binary);

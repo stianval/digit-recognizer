@@ -5,15 +5,17 @@
 #include <filesystem>
 #include <string>
 
-std::filesystem::path createTempDir(std::string caseName)
+namespace fs = std::filesystem;
+
+fs::path createTempDir(std::string caseName)
 {
     std::time_t time = std::time({});
     char timeString[std::size("yyyymmdd-hhmmss")];
     std::strftime(std::data(timeString), std::size(timeString),
                   "%Y%m%d-%H%M%S", std::gmtime(&time));
     std::string dirName = std::string("testrun_") + timeString + "_" + caseName;
-    auto tempDir = std::filesystem::temp_directory_path() / dirName;
-    std::filesystem::create_directory(tempDir);
+    auto tempDir = fs::temp_directory_path() / dirName;
+    fs::create_directory(tempDir);
     return tempDir;
 }
 
@@ -37,7 +39,7 @@ void case1()
     auto weightsFile = tempDir / "weights.data";
     saveWeights(weightsFile, weights);
     // then
-    ASSERT_EQ(std::filesystem::file_size(weightsFile), weights.size() * sizeof(float), "");
+    ASSERT_EQ(fs::file_size(weightsFile), weights.size() * sizeof(float), "");
 
     // prepare
     fvec_t loadedWeights(1024);
@@ -54,7 +56,7 @@ void case1()
     }
 
     // cleanup
-    std::filesystem::remove_all(tempDir);
+    fs::remove_all(tempDir);
 }
 
 int main()
