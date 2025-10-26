@@ -36,7 +36,7 @@ void loadWeights(const fs::path & path, fvec_t & weights)
 {
     std::vector<char> buf(weights.size() * sizeof(float));
     if (fs::file_size(path) != buf.size()) {
-	std::cerr << "File size is wrong" << path << std::endl;
+	std::cerr << "File size is wrong: " << path << std::endl;
 	throw std::runtime_error("File size is wrong");
     }
     std::ifstream file(path, std::ios_base::in | std::ios_base::binary);
