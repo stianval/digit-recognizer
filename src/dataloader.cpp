@@ -47,10 +47,10 @@ ImageBank::ImageBank(fvec_t data, std::size_t n, std::size_t rows, std::size_t c
     , cols(cols)
 { ; }
 
-const fspan_t ImageBank::at(std::size_t idx)
+cfspan_t ImageBank::at(std::size_t idx) const
 {
     auto imageSize = rows * cols;
-    return fspan_t(data_.data() + idx * imageSize, imageSize);
+    return cfspan_t(data_.data() + idx * imageSize, imageSize);
 }
 
 const ImageBank loadImages(fs::path path)

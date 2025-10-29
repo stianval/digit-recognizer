@@ -20,7 +20,7 @@ class MagicError : public std::runtime_error
 class ImageBank {
 public:
     ImageBank(fvec_t data, std::size_t n, std::size_t rows, std::size_t cols);
-    const fspan_t at(std::size_t idx);
+    cfspan_t at(std::size_t idx) const;
 
 private:
     fvec_t data_;

@@ -41,6 +41,7 @@ public:
     std::vector<fspan_t> activationSpans(fspan_t activations) const;
     void backPropagate(fvec_t & dw, fvec_t activations, cfspan_t target, cfspan_t input) const;
     void apply(const fvec_t & dw);
+    const fvec_t & weights() const;
 
 private:  // functions
     Model() = default;

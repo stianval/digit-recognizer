@@ -163,11 +163,17 @@ void Model::backPropagate(fvec_t & dw, fvec_t activations, cfspan_t target, cfsp
     layer.updateWeightDifferentials(curr_dw, dR_dz, input);
 }
 
-void Model::apply(const fvec_t & dw) {
+void Model::apply(const fvec_t & dw)
+{
     assert(dw.size() == weights_.size());
     for (std::size_t i = 0; i < dw.size(); ++i) {
         weights_[i] -= dw[i];
     }
+}
+
+const fvec_t & Model::weights() const
+{
+    return weights_;
 }
 
 Model & Model::finalize(fvec_t weights)

@@ -3,9 +3,9 @@ CC = $(CXX)
 
 COMMON_OBJECTS = src/model.o src/weightstorage.o src/dataloader.o
 
-src/modelstats: src/modelstats.o $(COMMON_OBJECTS)
-
 src/train: src/train.o $(COMMON_OBJECTS)
+
+src/modelstats: src/modelstats.o $(COMMON_OBJECTS)
 
 test/test_model: test/test_model.o src/model.o
 
