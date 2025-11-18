@@ -49,7 +49,7 @@ void Matrix::updateWeightDifferentials(fspan_t dw, cfspan_t dR_dz, cfspan_t inpu
             std::size_t i = row * cols_ + col;
             dw[i] += input[col] * dR_dz[row];
         }
-        std::size_t i = row * (cols_ - 1);
+        std::size_t i = row * cols_ + cols_ - 1;
         dw[i] += dR_dz[row];
     }
 }
@@ -58,17 +58,12 @@ void Matrix::overwriteActivationsWith_dR_dz(fspan_t activations, fspan_t dR_dz_p
 {
     assert(dR_dz_prev.size() == rows_);
     assert(activations.size() == cols_  - 1);
-    std::size_t row = 0;
     for (std::size_t col = 0; col < cols_ - 1; ++col) {
-        if (activations[col] == 0.0f)
+        if (activations[col] == 0.0f)  // test if da/dz is 0
             continue;
-        activations[col] = at(row, col) * dR_dz_prev[row];
-    }
-    for (row = 1; row < rows_; ++row) {
-        for (std::size_t col = 0; col < cols_ - 1; ++col) {
-            if (activations[col] == 0.0f)
-                continue;
-            activations[col] += at(row, col) * dR_dz_prev[row];
+        activations[col] = 0.0f;
+        for (std::size_t row = 0; row < rows_; ++row) {
+             activations[col] += at(row, col) * dR_dz_prev[row];
         }
     }
 }
@@ -154,9 +149,9 @@ void Model::backPropagate(fvec_t & dw, fvec_t activations, cfspan_t target, cfsp
         curr_dw = fspan_t(curr_dw.begin() - layer.size(), layer.size());
         fspan_t curr_activations(dR_dz.begin() - (layer.cols_ - 1), layer.cols_ - 1);
         layer.updateWeightDifferentials(curr_dw, dR_dz, curr_activations);
+
         layer.overwriteActivationsWith_dR_dz(curr_activations, dR_dz);
         dR_dz = curr_activations;
-        curr_activations = fspan_t(curr_activations.data() - layer.rows_, layer.rows_);
     }
     auto & layer = layers_.front();
     curr_dw = fspan_t(curr_dw.begin() - layer.size(), layer.size());

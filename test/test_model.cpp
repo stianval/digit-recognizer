@@ -127,8 +127,7 @@ void caseActivationSpans()
     for (std::size_t i = 0; i < g_first_relu.size(); ++i) {
         passing &= EXPECT_FUZZ_EQ(activationSpans[0][i], g_first_relu[i], std::format("[{}]", i), 1e-6f);
     }
-    std::size_t both_relu_size = g_first_relu.size() + g_second_relu.size();
-    for (std::size_t i = 0; i < both_relu_size; ++i) {
+    for (std::size_t i = 0; i < g_second_relu.size(); ++i) {
         passing &= EXPECT_FUZZ_EQ(activationSpans[1][i], g_second_relu[i], std::format("[{}]", i), 1e-6f);
     }
     ASSERT_EQ(passing, true, "");
@@ -229,6 +228,105 @@ void caseWeightDeltasAccumulateCorrectly()
     ASSERT_EQ(passing, true, "");
 }
 
+const fvec_t g_miniModelPerfectWeights = {
+    1.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f,
+
+    1.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f,
+};
+
+const fvec_t g_miniModelSymetricWeights = {
+    0.9f, 0.1f, 0.0f,
+    0.1f, 0.9f, 0.0f,
+
+    0.9f, 0.1f, 0.0f,
+    0.1f, 0.9f, 0.0f,
+};
+
+// a21 = r(r(i1 * w11 + i2 * w12 + b11) * w21 + r(i1 * w13 + i2 * w14 + b12) * w22 + b21)
+// a22 = r(r(i1 * w11 + i2 * w12 + b11) * w23 + r(i1 * w13 + i2 * w14 + b12) * w24 + b22)
+// input | target
+// 1,0   | 1,0
+// 0,1   | 0,1
+// cost =
+// (r(r(i11 * w11 + i12 * w12 + b11) * w21 + r(i11 * w13 + i12 * w14 + b12) * w22 + b21) - t11)^2 +
+// (r(r(i11 * w11 + i12 * w12 + b11) * w23 + r(i11 * w13 + i12 * w14 + b12) * w24 + b22) - t12)^2 +
+// (r(r(i21 * w11 + i22 * w12 + b11) * w21 + r(i21 * w13 + i22 * w14 + b12) * w22 + b21) - t21)^2 +
+// (r(r(i21 * w11 + i22 * w12 + b11) * w23 + r(i21 * w13 + i22 * w14 + b12) * w24 + b22) - t22)^2
+// =
+// (r(r(w11 + b11) * w21 + r(w13 + b12) * w22 + b21) - 1)^2 +
+// (r(r(w11 + b11) * w23 + r(w13 + b12) * w24 + b22))^2 +
+// (r(r(w12 + b11) * w21 + r(w14 + b12) * w22 + b21))^2 +
+// (r(r(w12 + b11) * w23 + r(w14 + b12) * w24 + b22) - 1)^2
+
+void caseMiniModelFixedAtIdeal()
+{
+    EmptyModel emptyModel;
+    ModelBuilder modelBuilder(emptyModel, 2);
+    modelBuilder.addLayer(2);
+    modelBuilder.addLayer(2);
+    const fvec_t & refWeights = g_miniModelPerfectWeights;
+    Model & model = modelBuilder.finalize(refWeights);
+    const fvec_t inputA = { 1.0f, 0.0f };
+    const fvec_t inputB = { 0.0f, 1.0f };
+    const auto & targetA = inputA;
+    const auto & targetB = inputB;
+
+    fvec_t dw(model.size(), 0.0f);
+    fvec_t activations = model.calculateActivations(inputA);
+    model.backPropagate(dw, activations, targetA, inputA);
+    activations = model.calculateActivations(inputB);
+    model.backPropagate(dw, activations, targetB, inputB);
+    model.apply(dw);
+    const fvec_t & weights = model.weights();
+    bool passing = true;
+    for (std::size_t i = 0; i < weights.size(); ++i) {
+        passing &= EXPECT_EQ(weights[i], refWeights[i], std::format("[{}]", i));
+    }
+    ASSERT_EQ(passing, true, "");
+}
+
+void caseSimpleSymmetry()
+{
+    EmptyModel emptyModel;
+    ModelBuilder modelBuilder(emptyModel, 2);
+    modelBuilder.addLayer(2);
+    modelBuilder.addLayer(2);
+    Model & model = modelBuilder.finalize(g_miniModelSymetricWeights);
+    const fvec_t inputA = { 1.0f, 0.0f };
+    const fvec_t inputB = { 0.0f, 1.0f };
+    const auto & targetA = inputA;
+    const auto & targetB = inputB;
+
+    std::vector<std::size_t> symmetricIndex = {
+        4, 3, 5,
+        1, 0, 2,
+
+        10, 9, 11,
+        7, 6, 8,
+    };
+
+    for (int step = 0; step < 3; ++step) {
+        fvec_t dw(model.size(), 0.0f);
+        fvec_t activations = model.calculateActivations(inputA);
+        model.backPropagate(dw, activations, targetA, inputA);
+        activations = model.calculateActivations(inputB);
+        model.backPropagate(dw, activations, targetB, inputB);
+        model.apply(dw);
+
+        const fvec_t & weights = model.weights();
+        ASSERT_EQ(weights.size(), symmetricIndex.size(), std::format("step={}", step));
+
+        bool passing = true;
+        for (std::size_t i = 0; i < weights.size(); ++i) {
+            passing &= EXPECT_EQ(weights[i], weights[symmetricIndex[i]], std::format("step={} i={}", step, i));
+        }
+
+        ASSERT_EQ(passing, true, std::format("[{}]", step));
+    }
+}
+
 int main()
 {
     case1();
@@ -237,6 +335,8 @@ int main()
     caseActivationSpans();
     caseBackPropagationReducesCost();
     caseWeightDeltasAccumulateCorrectly();
+    caseMiniModelFixedAtIdeal();
+    caseSimpleSymmetry();
     std::cout << "All tests passed!" << std::endl;
 }
 

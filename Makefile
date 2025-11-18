@@ -1,6 +1,10 @@
 override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror
 CC = $(CXX)
 
+ifdef DEBUG
+	override CXXFLAGS += -g
+endif
+
 COMMON_OBJECTS = src/model.o src/weightstorage.o src/dataloader.o
 
 src/train: src/train.o $(COMMON_OBJECTS)
