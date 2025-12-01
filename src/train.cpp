@@ -13,14 +13,16 @@
 
 namespace fs = std::filesystem;
 
-const int g_defaultMiniStep = 10;
+const int g_defaultMiniStep = 100;
+const float g_defaultLearningRate = 0.01f;
 
 struct ProgArgs {
     fs::path weightsIn;
     fs::path weightsOut;
     fs::path imageFile;
     fs::path labelFile;
-    int miniStep = 10;
+    int miniStep = g_defaultMiniStep;
+    float learningRate = g_defaultLearningRate;
 };
 
 void printHelp(const char * progName)
@@ -38,7 +40,7 @@ cfspan_t getTarget(int digit)
     return cfspan_t(targetVec.begin() + 9 - digit, 10);
 }
 
-void performMinistep(Model & model, const ImageBank & imageBank, const std::vector<char> & labels, std::span<const std::size_t> order)
+void performMinistep(Model & model, const ImageBank & imageBank, const std::vector<char> & labels, std::span<const std::size_t> order, float learningRate)
 {
     fvec_t dw(model.size(), 0.0f);
     for (std::size_t index : order) {
@@ -48,6 +50,7 @@ void performMinistep(Model & model, const ImageBank & imageBank, const std::vect
     }
     for (float & value : dw) {
         value /= order.size();
+        value *= learningRate;
     }
     model.apply(dw);
 }
@@ -130,7 +133,7 @@ int main(int argc, const char * argv[])
                 std::cout << std::format("Step {} / {}\n", step, nMiniSteps);
             }
             std::span<std::size_t> thisStepOrder(order.begin() + step * args.miniStep, args.miniStep);
-            performMinistep(model, imageBank, labels, thisStepOrder);
+            performMinistep(model, imageBank, labels, thisStepOrder, args.learningRate);
         }
         weights = model.weights();
     }
