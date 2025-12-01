@@ -15,6 +15,13 @@ struct ProgArgs {
     fs::path labelFile;
 };
 
+struct Stats {
+    int correct = 0;
+    double totalCost = 0.0;
+    double totalConfidenceOvershoot = 0.0;
+    double highestConfidenceOvershoot = 0.0;
+};
+
 struct DigitStats {
     int tp = 0;  // true positive
     int fp = 0;  // false positive
@@ -26,6 +33,19 @@ void printHelp(const char * progName)
 {
     std::cerr << std::format("Usage: {} <weights-file> <image-file> <label-file>", progName);
     std::exit(EXIT_FAILURE);
+}
+
+void printStats(int n, const Stats & stats, const DigitStats (& digitStats)[10])
+{
+    std::cout << std::format("Correct: {}/{} ({:.2f}%)\n", stats.correct, n, 100.0 * stats.correct / n);
+    std::cout << std::format("Avg cost: {:.2f}\n", stats.totalCost / n);
+    std::cout << std::format("Highest confidence overshoot: {}\n", stats.highestConfidenceOvershoot);
+    std::cout << std::format("Total confidence overshoot: {}\n", stats.totalConfidenceOvershoot);
+    for (int digit = 0; digit < 10; ++digit) {
+        auto ds = digitStats[digit];
+        std::cout << std::format("Digit {}: tp={:5}    fp={:5}     tn={:5}     fn={:5}\n",
+            digit, ds.tp, ds.fp, ds.tn, ds.fn);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -75,10 +95,7 @@ int main(int argc, char *argv[])
 
     Model & model = modelBuilder.finalize(weights);
 
-    int correct = 0;
-    double totalCost = 0.0;
-    double totalConfidenceOvershoot = 0.0;
-    double highestConfidenceOvershoot = 0.0;
+    Stats stats;
     DigitStats digitStats[10];
     std::size_t n = imageBank.n;
     for (std::size_t i = 0; i < n; ++i) {
@@ -93,11 +110,11 @@ int main(int argc, char *argv[])
             }
             bool isTarget = digit == labels[i];
             double diff = result[digit] - isTarget;
-            totalCost += diff * diff;
+            stats.totalCost += diff * diff;
             digitStats[digit].tn++;
         }
         if (highestDigit == labels[i]) {
-            correct++;
+            stats.correct++;
             auto & correctDigitStat = digitStats[highestDigit];
             correctDigitStat.tn--;
             correctDigitStat.tp++;
@@ -111,19 +128,11 @@ int main(int argc, char *argv[])
         }
         if (highestDigitConfidence > 1.0) {
             double confidenceOvershoot = highestDigitConfidence - 1.0;
-            totalConfidenceOvershoot += confidenceOvershoot;
-            if (highestConfidenceOvershoot < confidenceOvershoot) {
-                highestConfidenceOvershoot = confidenceOvershoot;
+            stats.totalConfidenceOvershoot += confidenceOvershoot;
+            if (stats.highestConfidenceOvershoot < confidenceOvershoot) {
+                stats.highestConfidenceOvershoot = confidenceOvershoot;
             }
         }
     }
-    std::cout << std::format("Correct: {}/{} ({:.2f}%)\n", correct, n, 100.0 * correct / n);
-    std::cout << std::format("Avg cost: {:.2f}\n", totalCost / n);
-    std::cout << std::format("Highest confidence overshoot: {}\n", highestConfidenceOvershoot);
-    std::cout << std::format("Total confidence overshoot: {}\n", totalConfidenceOvershoot);
-    for (int digit = 0; digit < 10; ++digit) {
-        auto ds = digitStats[digit];
-        std::cout << std::format("Digit {}: tp={:5}    fp={:5}     tn={:5}     fn={:5}\n",
-            digit, ds.tp, ds.fp, ds.tn, ds.fn);
-    }
+    printStats(n, stats, digitStats);
 }
