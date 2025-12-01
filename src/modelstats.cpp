@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
         fvec_t activations = model.calculateActivations(imageBank.at(i));
         cfspan_t result = model.activationSpans(activations).back();
         int highestDigit = 0;
-        int highestDigitConfidence = 0;
+        float highestDigitConfidence = 0;
         for (int digit = 0; digit < 10; ++digit) {
             if (result[digit] > highestDigitConfidence) {
                 highestDigit = digit;

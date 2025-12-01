@@ -1,4 +1,4 @@
-override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror
+override CXXFLAGS += -std=c++23 -Wall -Wextra -Wfloat-conversion -Werror
 CC = $(CXX)
 
 ifdef DEBUG
