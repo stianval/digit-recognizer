@@ -66,6 +66,7 @@ public:
     void addLayer(std::size_t size);
     std::size_t size() const;
     Model & finalize(fvec_t weights);
+    fvec_t prepareKaimingHeWeights();
 private:
     Model & model_;
     std::size_t currentLayerSize_{};

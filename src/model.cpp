@@ -1,6 +1,7 @@
 #include "model.h"
 
 #include <cassert>
+#include <random>
 
 float & Matrix::at(std::size_t row, std::size_t col) const
 {
@@ -206,4 +207,23 @@ Model & ModelBuilder::finalize(fvec_t weights)
 {
     assert(weights.size() == totalWeights_);
     return model_.finalize(std::move(weights));
+}
+
+fvec_t ModelBuilder::prepareKaimingHeWeights()
+{
+    std::random_device rnd;
+    fvec_t weights(totalWeights_, 0.0f);
+    float * layerWeights = weights.data();
+    for (Matrix & layer : model_.layers_) {
+        std::normal_distribution<float> distribution(0.0f, std::sqrt(2.0f / (layer.cols_ - 1)));
+        for (std::size_t row = 0; row < layer.rows_; ++row) {
+            for (std::size_t col = 0; col < layer.cols_ - 1; ++col) {
+                // Note: skip bias column this loop, biases are initialized to 0
+                layerWeights[row * layer.cols_ + col] = distribution(rnd);
+            }
+        }
+        layerWeights += layer.cols_ * layer.rows_;
+    }
+    assert(layerWeights == weights.data() + totalWeights_);
+    return weights;
 }

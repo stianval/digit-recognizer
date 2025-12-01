@@ -105,10 +105,11 @@ int main(int argc, const char * argv[])
     modelBuilder.addLayer(16);
     modelBuilder.addLayer(10);
 
-    fvec_t weights(modelBuilder.size(), 0.0f);
+    fvec_t weights;
     if (createRandomWeights) {
-        fillRandomWeights(weights);
+        weights = modelBuilder.prepareKaimingHeWeights();
     } else {
+        weights = fvec_t(modelBuilder.size(), 0.0f);
         loadWeights(args.weightsIn, weights);
     }
 
