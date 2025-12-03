@@ -5,6 +5,10 @@ ifdef DEBUG
 	override CXXFLAGS += -g
 endif
 
+ifdef RELEASE
+	override CXXFLAGS += -O2 -DNDEBUG=1
+endif
+
 COMMON_OBJECTS = src/model.o src/weightstorage.o src/dataloader.o
 
 src/train: src/train.o $(COMMON_OBJECTS)

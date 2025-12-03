@@ -176,7 +176,9 @@ Model & Model::finalize(fvec_t weights)
 {
     weights_ = std::move(weights);
     float * nextData = weights_.data();
+#ifndef NDEBUG
     float * const start = nextData;
+#endif
     for (Matrix & layer : layers_) {
         nextData = layer.grabData(nextData);
     }
