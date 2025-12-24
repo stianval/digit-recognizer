@@ -6,6 +6,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 
 namespace fs = std::filesystem;
 
@@ -13,6 +14,7 @@ struct ProgArgs {
     fs::path weightsPath;
     fs::path imageFile;
     fs::path labelFile;
+    fs::path csvFile;
 };
 
 struct Stats {
@@ -20,6 +22,8 @@ struct Stats {
     double totalCost = 0.0;
     double totalConfidenceOvershoot = 0.0;
     double highestConfidenceOvershoot = 0.0;
+    double totalConfidenceUndershoot = 0.0;
+    double highestConfidenceUndershoot = 0.0;
 };
 
 struct DigitStats {
@@ -31,20 +35,59 @@ struct DigitStats {
 
 void printHelp(const char * progName)
 {
-    std::cerr << std::format("Usage: {} <weights-file> <image-file> <label-file>", progName);
+    std::cerr << std::format("Usage: {} <weights-file> <image-file> <label-file> [csv-file]", progName);
     std::exit(EXIT_FAILURE);
 }
 
-void printStats(int n, const Stats & stats, const DigitStats (& digitStats)[10])
+void printCsvHeader(std::ostream & stream)
 {
-    std::cout << std::format("Correct: {}/{} ({:.2f}%)\n", stats.correct, n, 100.0 * stats.correct / n);
-    std::cout << std::format("Avg cost: {:.2f}\n", stats.totalCost / n);
-    std::cout << std::format("Highest confidence overshoot: {}\n", stats.highestConfidenceOvershoot);
-    std::cout << std::format("Total confidence overshoot: {}\n", stats.totalConfidenceOvershoot);
+    stream << "file,correct %,avg. cost,highest over,total over,highest under,total under";
+    for (int digit = 0; digit < 10; digit++) {
+        stream << std::format("tp{0},fp{0},tn{0},fn{0},acc{0} %,pre{0} %, rec{0} %", digit);
+    }
+    stream << "\n";
+}
+
+void printStats(std::ostream & stream, bool csv, int n, const Stats & stats, const DigitStats (& digitStats)[10])
+{
+    using digit_format_t = std::format_string<
+        int&, int&, int&, int&,
+        float&, float&, float&
+    >;
+    digit_format_t digitFormat =
+        "tp={:5}    fp={:5}     tn={:5}     fn={:5}    "
+        "acc={:4.1f}%    pre={:4.1f}%   rec={:4.1f}%\n";
+    if (csv) {
+        stream << std::format("{:.3f},", 100.0f * stats.correct / n);
+        stream << std::format("{:.4f},", stats.totalCost / n);
+        stream << std::format("{:.3f},{:.3f},{:.3f},{:.3f},",
+            stats.highestConfidenceOvershoot, stats.totalConfidenceOvershoot,
+            stats.highestConfidenceUndershoot, stats.totalConfidenceUndershoot);
+        digitFormat = "{},{},{},{},{:.3f},{:.3f},{:.3f}";
+    } else {
+        stream << std::format("Correct: {}/{} ({:.2f}%)\n", stats.correct, n, 100.0 * stats.correct / n);
+        stream << std::format("Avg cost: {:.4f}\n", stats.totalCost / n);
+        stream << std::format("Highest confidence overshoot: {}\n", stats.highestConfidenceOvershoot);
+        stream << std::format("Total confidence overshoot: {}\n", stats.totalConfidenceOvershoot);
+        stream << std::format("Highest confidence undershoot: {}\n", stats.highestConfidenceUndershoot);
+        stream << std::format("Total confidence undershoot: {}\n", stats.totalConfidenceUndershoot);
+    }
     for (int digit = 0; digit < 10; ++digit) {
+        if (!csv) {
+            stream << std::format("Digit {}: ", digit);
+        }
         auto ds = digitStats[digit];
-        std::cout << std::format("Digit {}: tp={:5}    fp={:5}     tn={:5}     fn={:5}\n",
-            digit, ds.tp, ds.fp, ds.tn, ds.fn);
+        int digitTotal = ds.tp + ds.fp + ds.tn + ds.fn;
+        assert(digitTotal == n);
+        float accuracyPct = float(ds.tp + ds.tn) / digitTotal * 100;
+        float precisionPct = float(ds.tp) / (ds.tp + ds.fp) * 100;
+        float recallPct = float(ds.tp) / (ds.tp + ds.fn) * 100;
+        stream << std::format(digitFormat,
+            ds.tp, ds.fp, ds.tn, ds.fn,
+            accuracyPct, precisionPct, recallPct);
+    }
+    if (csv) {
+        stream << "\n";
     }
 }
 
@@ -57,6 +100,20 @@ int main(int argc, char *argv[])
     args.weightsPath = argv[1];
     args.imageFile = argv[2];
     args.labelFile = argv[3];
+    if (argc >= 4) {
+        args.csvFile = argv[4];
+    }
+
+    std::ofstream csvFile;
+    if (!args.csvFile.empty()) {
+        if (fs::exists(args.csvFile)) {
+            csvFile.open(args.csvFile, std::ios_base::app);
+        } else {
+            csvFile.open(args.csvFile);
+            printCsvHeader(csvFile);
+        }
+    }
+    std::ostream & ostream = csvFile ? csvFile : std::cout;
 
     if (!fs::exists(args.weightsPath)) {
         std::cerr << std::format("'{}' does not exist\n", std::string(args.weightsPath));
@@ -132,7 +189,16 @@ int main(int argc, char *argv[])
             if (stats.highestConfidenceOvershoot < confidenceOvershoot) {
                 stats.highestConfidenceOvershoot = confidenceOvershoot;
             }
+        } else {
+            double confidenceUndershoot = 1.0 - highestDigitConfidence;
+            stats.totalConfidenceUndershoot += confidenceUndershoot;
+            if (stats.highestConfidenceUndershoot < confidenceUndershoot) {
+                stats.highestConfidenceUndershoot = confidenceUndershoot;
+            }
         }
     }
-    printStats(n, stats, digitStats);
+    if (csvFile) {
+        ostream << args.weightsPath << ',';
+    }
+    printStats(ostream, bool(csvFile), n, stats, digitStats);
 }

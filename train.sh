@@ -52,3 +52,9 @@ if [[ ${cmd} == "delete" ]]; then
     done
     exit
 fi
+
+if [[ ${cmd} == "csv" ]]; then
+    for i in $(seq 1 ${epochs}); do
+        src/modelstats ${prefix}${i}.dat ${TEST_DATA} ${TEST_LABELS} ${prefix}.csv
+    done
+fi
